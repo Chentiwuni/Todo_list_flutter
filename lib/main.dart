@@ -61,14 +61,34 @@ class _HomePageState extends State<HomePage> {
       tasksByCategory[currentCategory]!.addAll(updatedTasks);
     });
   }
+  
+  void _onReorder(int oldIndex, int newIndex) {
+  setState(() {
+    if (oldIndex < newIndex) {
+      newIndex -= 1; // Adjust for the removal of the original index
+    }
+    final task = tasksByCategory[currentCategory]!.removeAt(oldIndex);
+    tasksByCategory[currentCategory]!.insert(newIndex, task);
+  });
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: Text(currentCategory, style: const TextStyle(color: Color(0xFFFF4500)),)),
+        centerTitle: true, // Ensures the title is centered within the AppBar
+        title: Text(
+          currentCategory,
+          style: const TextStyle(
+            color: Color(0xFFFF4500),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       drawer: Drawer(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero, // No rounded corners
+        ),
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -89,7 +109,6 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            // Add Category ListTile goes first
             ListTile(
               leading: const Icon(Icons.add),
               title: const Text('Add Bucket'),
@@ -98,15 +117,14 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             const Divider(),
-            // Dynamically created category ListTiles go after Add Category
             ...tasksByCategory.keys.map((category) {
               return ListTile(
                 title: Text(category),
                 onTap: () {
                   setState(() {
-                    currentCategory = category; // Switch to the selected category
+                    currentCategory = category;
                   });
-                  Navigator.of(context).pop(); // Close the drawer
+                  Navigator.of(context).pop();
                 },
               );
             }),
@@ -131,21 +149,26 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
             )
-          : ListView.builder(
+          : ReorderableListView(
               padding: const EdgeInsets.all(16.0),
-              itemCount: tasksByCategory[currentCategory]!.length,
-              itemBuilder: (context, index) {
-                bool hasNote = tasksByCategory[currentCategory]![index]['note'] != null &&
-                    tasksByCategory[currentCategory]![index]['note']!.isNotEmpty;
+              onReorder: (oldIndex, newIndex) {
+                _onReorder(oldIndex, newIndex);
+              },
+              children: tasksByCategory[currentCategory]!
+                  .asMap()
+                  .entries
+                  .map((entry) {
+                int index = entry.key;
+                var task = entry.value;
+                bool hasNote = task['note'] != null && task['note']!.isNotEmpty;
 
                 return ListTile(
+                  key: ValueKey(task), // Key required for reordering
                   title: Text(
-                    tasksByCategory[currentCategory]![index]['title'],
+                    task['title'],
                     style: TextStyle(
-                      color: tasksByCategory[currentCategory]![index]['completed']
-                          ? Colors.grey
-                          : Colors.black,
-                      decoration: tasksByCategory[currentCategory]![index]['completed']
+                      color: task['completed'] ? Colors.grey : Colors.black,
+                      decoration: task['completed']
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
                     ),
@@ -153,21 +176,17 @@ class _HomePageState extends State<HomePage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Display checkmark icon for completion toggle
                       IconButton(
                         icon: Icon(
-                          tasksByCategory[currentCategory]![index]['completed']
+                          task['completed']
                               ? Icons.check_circle
                               : Icons.radio_button_unchecked,
-                          color: tasksByCategory[currentCategory]![index]['completed']
-                              ? Colors.green
-                              : Colors.grey,
+                          color: task['completed'] ? Colors.green : Colors.grey,
                         ),
                         onPressed: () {
-                          _toggleTaskCompletion(index); // Toggling task completion
+                          _toggleTaskCompletion(index);
                         },
                       ),
-                      // Display note icon if task has a note
                       if (hasNote)
                         const Icon(
                           Icons.description,
@@ -176,10 +195,10 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                   onTap: () {
-                    _showBottomSheet(context, index); // Showing bottom sheet for task options
+                    _showBottomSheet(context, index);
                   },
                 );
-              },
+              }).toList(),
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -189,7 +208,7 @@ class _HomePageState extends State<HomePage> {
         child: const Icon(Icons.add),
       ),
     );
-  }
+  }     
 
   void _showAddCategoryDialog(BuildContext context) {
     String categoryName = '';
@@ -264,14 +283,28 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showBottomSheet(BuildContext context, int index) {
+    String taskTitle = tasksByCategory[currentCategory]![index]['title'];
     String note = tasksByCategory[currentCategory]![index]['note'] ?? ''; // Initialize note with current task's note
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center, // Center content horizontally
           children: [
+            // Task title centered
+            Text(
+              taskTitle,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const Divider(),
+            // Add Note text field centered
             TextField(
               controller: TextEditingController(text: note), // Set the initial value of the note
               decoration: const InputDecoration(
@@ -280,12 +313,18 @@ class _HomePageState extends State<HomePage> {
               onChanged: (value) {
                 note = value; // Update the note variable when the user types
               },
+              textAlign: TextAlign.center, // Center the text inside the field
             ),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Normal Save Button
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: const RoundedRectangleBorder(), // Normal rectangular shape
+                    minimumSize: const Size(100, 40), // Set minimum size for consistent button height
+                  ),
                   onPressed: () {
                     setState(() {
                       tasksByCategory[currentCategory]![index]['note'] = note; // Save the updated note to the task
@@ -294,15 +333,46 @@ class _HomePageState extends State<HomePage> {
                   },
                   child: const Text('Save Note'),
                 ),
+                // Normal Delete Button
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: const RoundedRectangleBorder(), // Normal rectangular shape
+                    minimumSize: const Size(100, 40), // Set minimum size for consistent button height
+                  ),
                   onPressed: () {
-                    setState(() {
-                      tasksByCategory[currentCategory]!.removeAt(index); // Delete the task
-                    });
-                    Navigator.of(context).pop(); // Close the bottom sheet
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Deletion'),
+                          content: const Text('Are you sure you want to delete this task?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(); // Close the confirmation dialog
+                              },
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  tasksByCategory[currentCategory]!.removeAt(index); // Delete the task
+                                });
+                                Navigator.of(context).pop(); // Close the confirmation dialog
+                                Navigator.of(context).pop(); // Close the bottom sheet
+                              },
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text('Delete Task'),
+                  child: const Text('Delete Task', 
+                  style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
