@@ -176,6 +176,11 @@ class _HomePageState extends State<HomePage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (hasNote)
+                        const Icon(
+                          Icons.description,
+                          color: Colors.lightBlue,
+                        ),
                       IconButton(
                         icon: Icon(
                           task['completed']
@@ -187,11 +192,6 @@ class _HomePageState extends State<HomePage> {
                           _toggleTaskCompletion(index);
                         },
                       ),
-                      if (hasNote)
-                        const Icon(
-                          Icons.description,
-                          color: Colors.lightBlue,
-                        ),
                     ],
                   ),
                   onTap: () {
