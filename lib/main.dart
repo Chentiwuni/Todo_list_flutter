@@ -28,49 +28,57 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final Map<String, List<Map<String, dynamic>>> tasksByCategory = {
-    'My ToDo': [], // Default category
+  final Map<String, Map<String, List<Map<String, dynamic>>>> tasksByCategory = {
+    'My ToDo': {
+      'uncompletedTasks': [],
+      'completedTasks': [],
+    },
   };
   String currentCategory = 'My ToDo'; // Tracks the current active category
 
   void _addCategory(String categoryName) {
     if (categoryName.isNotEmpty && !tasksByCategory.containsKey(categoryName)) {
       setState(() {
-        tasksByCategory[categoryName] = [];
+        tasksByCategory[categoryName] = {
+          'uncompletedTasks': [],
+          'completedTasks': [],
+        };
       });
     }
   }
 
   void _addTask(String taskName) {
     setState(() {
-    tasksByCategory[currentCategory]!.insert(0, {
-      'title': taskName,
-      'completed': false,
+      tasksByCategory[currentCategory]!['uncompletedTasks']!.insert(0, {
+        'title': taskName,
+        'completed': false,
+        'note': '',
+      });
     });
-  });
   }
 
-  void _toggleTaskCompletion(int index) {
+  void _toggleTaskCompletion(int index, bool isCompleted) {
     setState(() {
-      tasksByCategory[currentCategory]![index]['completed'] =
-          !tasksByCategory[currentCategory]![index]['completed'];
+      final task = tasksByCategory[currentCategory]![isCompleted ? 'completedTasks' : 'uncompletedTasks']!.removeAt(index);
+      task['completed'] = !isCompleted;
 
-      List<Map<String, dynamic>> updatedTasks = List.from(tasksByCategory[currentCategory]!);
-      updatedTasks.sort((a, b) => a['completed'] ? 1 : -1);
-      tasksByCategory[currentCategory]!.clear();
-      tasksByCategory[currentCategory]!.addAll(updatedTasks);
+      if (isCompleted) {
+        tasksByCategory[currentCategory]!['uncompletedTasks']!.insert(0, task);
+      } else {
+        tasksByCategory[currentCategory]!['completedTasks']!.add(task);
+      }
     });
   }
   
   void _onReorder(int oldIndex, int newIndex) {
-  setState(() {
-    if (oldIndex < newIndex) {
-      newIndex -= 1; // Adjust for the removal of the original index
-    }
-    final task = tasksByCategory[currentCategory]!.removeAt(oldIndex);
-    tasksByCategory[currentCategory]!.insert(newIndex, task);
-  });
-}
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final task = tasksByCategory[currentCategory]!['uncompletedTasks']!.removeAt(oldIndex);
+      tasksByCategory[currentCategory]!['uncompletedTasks']!.insert(newIndex, task);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,71 +150,95 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: tasksByCategory[currentCategory]!.isEmpty
-          ? const Center(
+      body: Column(
+        children: [
+          if (tasksByCategory[currentCategory]!['uncompletedTasks']!.isEmpty &&
+              tasksByCategory[currentCategory]!['completedTasks']!.isEmpty)
+            const Center(
               child: Text(
                 'No tasks added yet. Tap + to add a task.',
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
             )
-          : ReorderableListView(
-              padding: const EdgeInsets.all(16.0),
-              onReorder: (oldIndex, newIndex) {
-                _onReorder(oldIndex, newIndex);
-              },
-              children: tasksByCategory[currentCategory]!
-                  .asMap()
-                  .entries
-                  .map((entry) {
-                int index = entry.key;
-                var task = entry.value;
-                bool hasNote = task['note'] != null && task['note']!.isNotEmpty;
+          else
+            Expanded(
+                            child: ReorderableListView(
+                padding: const EdgeInsets.all(16.0),
+                onReorder: _onReorder,
+                children: tasksByCategory[currentCategory]!['uncompletedTasks']!
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                  final index = entry.key;
+                  final task = entry.value;
 
+                  return ListTile(
+                    key: ValueKey(task),
+                    title: Text(task['title']),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (task['note'] != null && task['note']!.isNotEmpty)
+                          const Icon(Icons.description, color: Colors.lightBlue),
+                        IconButton(
+                          icon: Icon(
+                            task['completed']
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            color: task['completed'] ? Colors.green : Colors.grey,
+                          ),
+                          onPressed: () {
+                            _toggleTaskCompletion(index, false);
+                          },
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      _showBottomSheet(context, index, false); // Show the bottom sheet
+                    },
+                  );
+                }).toList(),
+              ),
+
+            ),
+          const Divider(),
+          Expanded(
+                        child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: tasksByCategory[currentCategory]!['completedTasks']!.length,
+              itemBuilder: (context, index) {
+                final task = tasksByCategory[currentCategory]!['completedTasks']![index];
                 return ListTile(
-                  key: ValueKey(task), // Key required for reordering
                   title: Text(
                     task['title'],
-                    style: TextStyle(
-                      color: task['completed'] ? Colors.grey : Colors.black,
-                      decoration: task['completed']
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      decoration: TextDecoration.lineThrough,
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasNote)
-                        const Icon(
-                          Icons.description,
-                          color: Colors.lightBlue,
-                        ),
-                      IconButton(
-                        icon: Icon(
-                          task['completed']
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          color: task['completed'] ? Colors.green : Colors.grey,
-                        ),
-                        onPressed: () {
-                          _toggleTaskCompletion(index);
-                        },
-                      ),
-                    ],
+                  trailing: IconButton(
+                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                    onPressed: () {
+                      _toggleTaskCompletion(index, true);
+                    },
                   ),
                   onTap: () {
-                    _showBottomSheet(context, index);
+                    _showBottomSheet(context, index, true); // Show the bottom sheet
                   },
                 );
-              }).toList(),
+              },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddTaskDialog(context);
-        },
-        tooltip: 'Add Task',
-        child: const Icon(Icons.add),
+
+          ),
+        ],
       ),
+      floatingActionButton: tasksByCategory.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: () => _showAddTaskDialog(context),
+              tooltip: 'Add Task',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }     
 
@@ -282,103 +314,81 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showBottomSheet(BuildContext context, int index) {
-    String taskTitle = tasksByCategory[currentCategory]![index]['title'];
-    String note = tasksByCategory[currentCategory]![index]['note'] ?? ''; // Initialize note with current task's note
+void _showBottomSheet(BuildContext context, int index, bool isCompleted) {
+  final taskList = tasksByCategory[currentCategory]![isCompleted ? 'completedTasks' : 'uncompletedTasks']!;
+  final task = taskList[index];
+  final String taskTitle = task['title'];
+  String note = task['note'] ?? '';
 
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center, // Center content horizontally
-          children: [
-            // Task title centered
-            Text(
-              taskTitle,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+  showModalBottomSheet(
+    context: context,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch elements to fill horizontally
+        children: [
+          Text(
+            taskTitle,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const Divider(),
+          TextField(
+            controller: TextEditingController(text: note),
+            decoration: const InputDecoration(labelText: 'Add a Note'),
+            onChanged: (value) => note = value,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    task['note'] = note;
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Save Note'),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const Divider(),
-            // Add Note text field centered
-            TextField(
-              controller: TextEditingController(text: note), // Set the initial value of the note
-              decoration: const InputDecoration(
-                labelText: 'Add a Note',
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Confirm Deletion'),
+                        content: const Text('Are you sure you want to delete this task?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                taskList.removeAt(index);
+                              });
+                              Navigator.of(context).pop(); // Close dialog
+                              Navigator.of(context).pop(); // Close bottom sheet
+                            },
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: const Text('Delete Task'),
               ),
-              onChanged: (value) {
-                note = value; // Update the note variable when the user types
-              },
-              textAlign: TextAlign.center, // Center the text inside the field
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Normal Save Button
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    shape: const RoundedRectangleBorder(), // Normal rectangular shape
-                    minimumSize: const Size(100, 40), // Set minimum size for consistent button height
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      tasksByCategory[currentCategory]![index]['note'] = note; // Save the updated note to the task
-                    });
-                    Navigator.of(context).pop(); // Close the bottom sheet
-                  },
-                  child: const Text('Save Note'),
-                ),
-                // Normal Delete Button
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: const RoundedRectangleBorder(), // Normal rectangular shape
-                    minimumSize: const Size(100, 40), // Set minimum size for consistent button height
-                  ),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Confirm Deletion'),
-                          content: const Text('Are you sure you want to delete this task?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close the confirmation dialog
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  tasksByCategory[currentCategory]!.removeAt(index); // Delete the task
-                                });
-                                Navigator.of(context).pop(); // Close the confirmation dialog
-                                Navigator.of(context).pop(); // Close the bottom sheet
-                              },
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  child: const Text('Delete Task', 
-                  style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
