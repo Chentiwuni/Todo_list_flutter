@@ -201,7 +201,6 @@ class _HomePageState extends State<HomePage> {
               ),
 
             ),
-          const Divider(),
           Expanded(
                         child: ListView.builder(
               padding: const EdgeInsets.all(16.0),
