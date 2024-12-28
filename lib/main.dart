@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
 
             ),
           Expanded(
-                        child: ListView.builder(
+                                    child: ListView.builder(
               padding: const EdgeInsets.all(16.0),
               itemCount: tasksByCategory[currentCategory]!['completedTasks']!.length,
               itemBuilder: (context, index) {
@@ -215,18 +215,27 @@ class _HomePageState extends State<HomePage> {
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
-                    onPressed: () {
-                      _toggleTaskCompletion(index, true);
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Check if the task has a note and show the icon
+                      if (task['note'] != null && task['note']!.isNotEmpty)
+                        const Icon(Icons.description, color: Colors.lightBlue),
+                      IconButton(
+                        icon: const Icon(Icons.check_circle, color: Colors.green),
+                        onPressed: () {
+                          _toggleTaskCompletion(index, true);
+                        },
+                      ),
+                    ],
                   ),
                   onTap: () {
                     _showBottomSheet(context, index, true); // Show the bottom sheet
                   },
                 );
               },
-            ),
+            )
+
 
           ),
         ],
@@ -319,75 +328,78 @@ void _showBottomSheet(BuildContext context, int index, bool isCompleted) {
   final String taskTitle = task['title'];
   String note = task['note'] ?? '';
 
-  showModalBottomSheet(
-    context: context,
-    builder: (context) => Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch elements to fill horizontally
-        children: [
-          Text(
-            taskTitle,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const Divider(),
-          TextField(
-            controller: TextEditingController(text: note),
-            decoration: const InputDecoration(labelText: 'Add a Note'),
-            onChanged: (value) => note = value,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    task['note'] = note;
-                  });
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Save Note'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Confirm Deletion'),
-                        content: const Text('Are you sure you want to delete this task?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                taskList.removeAt(index);
-                              });
-                              Navigator.of(context).pop(); // Close dialog
-                              Navigator.of(context).pop(); // Close bottom sheet
-                            },
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                child: const Text('Delete Task'),
-              ),
-            ],
-          ),
-        ],
-      ),
+showModalBottomSheet(
+  context: context,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.zero, // No rounded corners
+  ),
+  builder: (context) => Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          taskTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const Divider(),
+        TextField(
+          controller: TextEditingController(text: note),
+          decoration: const InputDecoration(labelText: 'Add a Note'),
+          onChanged: (value) => note = value,
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  task['note'] = note;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save Note'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Confirm Deletion'),
+                      content: const Text('Are you sure you want to delete this task?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              taskList.removeAt(index);
+                            });
+                            Navigator.of(context).pop(); // Close dialog
+                            Navigator.of(context).pop(); // Close bottom sheet
+                          },
+                          child: const Text('Delete', style: TextStyle(color: Colors.red),),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: const Text('Delete Task', style: TextStyle(color: Colors.red),),
+            ),
+          ],
+        ),
+      ],
     ),
-  );
+  ),
+);
 }
 }
