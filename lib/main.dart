@@ -80,6 +80,159 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _showAddCategoryDialog(BuildContext context) {
+  String categoryName = '';
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Add New Category'),
+        content: TextField(
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Enter category name'),
+          onChanged: (value) {
+            categoryName = value;
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (categoryName.isNotEmpty) {
+                _addCategory(categoryName);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+  void _showAddTaskDialog(BuildContext context) {
+    String taskName = '';
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add New Task'),
+          content: TextField(
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Enter task name'),
+            onChanged: (value) {
+              taskName = value;
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (taskName.isNotEmpty) {
+                  _addTask(taskName);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showBottomSheet(BuildContext context, int index, bool isCompleted) {
+  final taskList = tasksByCategory[currentCategory]![isCompleted ? 'completedTasks' : 'uncompletedTasks']!;
+  final task = taskList[index];
+  final String taskTitle = task['title'];
+  String note = task['note'] ?? '';
+
+showModalBottomSheet(
+  context: context,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.zero, // No rounded corners
+  ),
+  builder: (context) => Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          taskTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const Divider(),
+        TextField(
+          controller: TextEditingController(text: note),
+          decoration: const InputDecoration(labelText: 'Add a Note'),
+          onChanged: (value) => note = value,
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  task['note'] = note;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save Note'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Confirm Deletion'),
+                      content: const Text('Are you sure you want to delete this task?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              taskList.removeAt(index);
+                            });
+                            Navigator.of(context).pop(); // Close dialog
+                            Navigator.of(context).pop(); // Close bottom sheet
+                          },
+                          child: const Text('Delete', style: TextStyle(color: Colors.red),),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: const Text('Delete Task', style: TextStyle(color: Colors.red),),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+);
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -162,7 +315,7 @@ class _HomePageState extends State<HomePage> {
             )
           else
             Expanded(
-                            child: ReorderableListView(
+                child: ReorderableListView(
                 padding: const EdgeInsets.all(16.0),
                 onReorder: _onReorder,
                 children: tasksByCategory[currentCategory]!['uncompletedTasks']!
@@ -199,10 +352,9 @@ class _HomePageState extends State<HomePage> {
                   );
                 }).toList(),
               ),
-
             ),
           Expanded(
-                                    child: ListView.builder(
+              child: ListView.builder(
               padding: const EdgeInsets.all(16.0),
               itemCount: tasksByCategory[currentCategory]!['completedTasks']!.length,
               itemBuilder: (context, index) {
@@ -235,8 +387,6 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             )
-
-
           ),
         ],
       ),
@@ -249,157 +399,4 @@ class _HomePageState extends State<HomePage> {
           : null,
     );
   }     
-
-  void _showAddCategoryDialog(BuildContext context) {
-    String categoryName = '';
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add New Category'),
-          content: TextField(
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Enter category name'),
-            onChanged: (value) {
-              categoryName = value;
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (categoryName.isNotEmpty) {
-                  _addCategory(categoryName);
-                }
-                Navigator.of(context).pop();
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showAddTaskDialog(BuildContext context) {
-    String taskName = '';
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add New Task'),
-          content: TextField(
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Enter task name'),
-            onChanged: (value) {
-              taskName = value;
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (taskName.isNotEmpty) {
-                  _addTask(taskName);
-                }
-                Navigator.of(context).pop();
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-void _showBottomSheet(BuildContext context, int index, bool isCompleted) {
-  final taskList = tasksByCategory[currentCategory]![isCompleted ? 'completedTasks' : 'uncompletedTasks']!;
-  final task = taskList[index];
-  final String taskTitle = task['title'];
-  String note = task['note'] ?? '';
-
-showModalBottomSheet(
-  context: context,
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.zero, // No rounded corners
-  ),
-  builder: (context) => Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          taskTitle,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const Divider(),
-        TextField(
-          controller: TextEditingController(text: note),
-          decoration: const InputDecoration(labelText: 'Add a Note'),
-          onChanged: (value) => note = value,
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  task['note'] = note;
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('Save Note'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text('Confirm Deletion'),
-                      content: const Text('Are you sure you want to delete this task?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              taskList.removeAt(index);
-                            });
-                            Navigator.of(context).pop(); // Close dialog
-                            Navigator.of(context).pop(); // Close bottom sheet
-                          },
-                          child: const Text('Delete', style: TextStyle(color: Colors.red),),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-              child: const Text('Delete Task', style: TextStyle(color: Colors.red),),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ),
-);
-}
 }
